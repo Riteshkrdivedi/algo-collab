@@ -129,8 +129,17 @@ export default function Navbar() {
               <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 animate-pulse" />
             </button>
 
-            {/* User Button */}
+            {/* Profile shortcut + User Button */}
             <div className="flex items-center gap-2">
+              {/* Profile icon link (left of Clerk icon) */}
+              <Link
+                href="/profile"
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all duration-300"
+                aria-label="Profile"
+                title="Profile"
+              >
+                <User className="h-5 w-5" />
+              </Link>
               <UserButton
                 appearance={{
                   elements: {
@@ -149,6 +158,8 @@ export default function Navbar() {
                       "text-red-400 hover:text-red-300",
                   },
                 }}
+                userProfileMode="navigation"
+                userProfileUrl="/profile"
               />
             </div>
 
@@ -224,6 +235,8 @@ export default function Navbar() {
                         "rounded-2xl border border-white/10 bg-neutral-900/95 backdrop-blur-xl shadow-2xl",
                     },
                   }}
+                  userProfileMode="navigation"
+                  userProfileUrl="/profile"
                 />
               </div>
             </SignedIn>

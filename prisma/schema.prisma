@@ -1,0 +1,219 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------ Users & enums ------------------
+
+enum CountryCode {
+  IN
+  US
+  GB
+  DE
+  FR
+  CA
+  AU
+  JP
+  OTHER
+}
+
+model User {
+  id          String      @id @default(uuid()) @db.Uuid
+  clerkId     String      @unique // Clerk user id
+  email       String      @unique
+  username    String      @unique
+  displayName String
+  avatarUrl   String?
+  country     CountryCode @default(OTHER)
+
+  // game stats
+  xp            Int @default(0)
+  elo           Int @default(1500)
+  gamesPlayed   Int @default(0)
+  wins          Int @default(0)
+  losses        Int @default(0)
+  currentStreak Int @default(0)
+  bestStreak    Int @default(0)
+
+  // relations
+  participants BattleParticipant[]
+  events       BattleEvent[]
+  userBadges   UserAchievement[]
+  teamMembers  TeamMembership[]
+  wonBattles   Battle[]            @relation("BattleWinner")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  joinedAt  DateTime @default(now())
+}
+
+// ------------------ Achievements ------------------
+
+model Achievement {
+  id          String @id @default(uuid()) @db.Uuid
+  slug        String @unique
+  name        String
+  description String
+  points      Int    @default(0)
+
+  awarded UserAchievement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  achievementId String   @db.Uuid
+  earnedAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}
+
+// ------------------ Teams (for future 2v2) ------------------
+
+model Team {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  members TeamMembership[]
+}
+
+model TeamMembership {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @db.Uuid
+  teamId   String   @db.Uuid
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+// ------------------ Battles ------------------
+
+enum BattleStatus {
+  WAITING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum BattleMode {
+  ONE_VS_ONE
+  TEAM_2V2
+}
+
+enum TeamSide {
+  A
+  B
+  NONE
+}
+
+model Battle {
+  id     String       @id @default(uuid()) @db.Uuid
+  status BattleStatus @default(WAITING)
+  mode   BattleMode   @default(ONE_VS_ONE)
+
+  // same input for all participants (e.g., problem+seed)
+  problemKey String?
+  dataset    Json?
+
+  // winner (optional until completed)
+  winnerId String? @db.Uuid
+  winner   User?   @relation("BattleWinner", fields: [winnerId], references: [id])
+
+  startedAt DateTime?
+  endedAt   DateTime?
+
+  participants BattleParticipant[]
+  events       BattleEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, mode])
+  @@index([winnerId])
+}
+
+model BattleParticipant {
+  id       String @id @default(uuid()) @db.Uuid
+  battleId String @db.Uuid
+  userId   String @db.Uuid
+
+  team      TeamSide @default(NONE)
+  algorithm String? // e.g. "quick-sort", "dijkstra"
+  isWinner  Boolean  @default(false)
+
+  // scoring metrics (all optional until end)
+  timeMs      Int?
+  comparisons Int?
+  swaps       Int?
+  memoryBytes Int?
+  eloChange   Int? // rating delta for this player
+
+  battle Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([battleId, userId])
+  @@index([battleId])
+  @@index([userId])
+}
+
+// ------------------ Battle events (replay log) ------------------
+
+enum EventType {
+  INFO
+  COMPARE
+  SWAP
+  ENQUEUE
+  DEQUEUE
+  WRITE
+  DONE
+}
+
+model BattleEvent {
+  id       String    @id @default(uuid()) @db.Uuid
+  battleId String    @db.Uuid
+  userId   String    @db.Uuid
+  stepNo   Int       @default(0)
+  type     EventType @default(INFO)
+  // optional detailed payload (indexes, values, arrays, etc.)
+  payload  Json?
+
+  // quick counters for analytics
+  comparisons Int?
+  swaps       Int?
+
+  at DateTime @default(now())
+
+  battle Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([battleId, stepNo])
+  @@index([userId])
+}
