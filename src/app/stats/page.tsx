@@ -217,12 +217,9 @@ export default function StatsPage() {
               {/* Home Button */}
               <Link
                 href="/"
-                className="group flex-col justify-center items-center gap-2 px-2 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105"
+                className="group flex-col justify-center items-center gap-2 mr-8 px-2 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105"
               >
                 <Home className="h-8 w-8 text-white/80 flex justify-center items-center group-hover:text-white transition-colors" />
-                {/* <span className="text-sm text-white/80 group-hover:text-white transition-colors">
-                  Home
-                </span> */}
               </Link>
 
               <div>
